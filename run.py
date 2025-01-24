@@ -106,10 +106,11 @@ async def check_reminders():
                     to_remove.append((user_id, reminder))
 
         for user_id, reminder in to_remove:
+            print(f"Напоминание произошло. Удаление из бд {user_id, reminder} in {to_remove}")
             reminders[user_id].remove(reminder)
             delete_reminder_from_db(user_id, reminder['time'].strftime('%H:%M-%d.%m.%Y'), reminder['message'])
 
-        # save_reminders_to_file()
+
         await asyncio.sleep(5)  # Check every 30 seconds
 
 
@@ -159,8 +160,8 @@ async def set_reminder(message: types.Message, state: FSMContext):
             'remaining': reminder_time - datetime.now()
         })
 
+        print(f"загрузил в бд {user_id, time_str, reminder_message}")
         save_reminder_to_db(user_id, time_str, reminder_message)
-
         await state.clear()
         await message.answer(f"Напоминание установлено на {time_str}: {reminder_message}", reply_markup=main_keyboard)
 
@@ -171,6 +172,7 @@ async def set_reminder(message: types.Message, state: FSMContext):
 
 @dp.message(lambda message: message.text == "🔎 Посмотреть все напоминания")
 async def view_reminders_handler(message: types.Message):
+    print("делаем запрос к бд")
     user_id = message.from_user.id  # Получаем ID пользователя
     conn = sqlite3.connect("reminders.db")
     cursor = conn.cursor()
@@ -178,6 +180,7 @@ async def view_reminders_handler(message: types.Message):
     # Фильтруем напоминания по user_id
     cursor.execute("SELECT user_id, time, message FROM reminders WHERE user_id = ?", (user_id,))
     reminders = cursor.fetchall()
+    print(F"получаем данные {reminders}")
     conn.close()
 
     if not reminders:
@@ -254,6 +257,7 @@ async def on_startup():
                 'message': reminder['message'],
                 'remaining': datetime.fromisoformat(reminder['time']) - datetime.now()
             })
+    print(f"подгрузил бд {reminders}")
 
     asyncio.create_task(check_reminders())
 
